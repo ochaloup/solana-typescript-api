@@ -1,7 +1,7 @@
 import * as anchor from "@project-serum/anchor";
 import { AnchorProvider, Program } from "@project-serum/anchor";
 import { SolanaTypescriptApi } from "../target/types/solana_typescript_api";
-import { assert } from "chai";
+import { assert, config } from "chai";
 
 import {
   BlockhashWithExpiryBlockHeight,
@@ -13,6 +13,7 @@ import {
   TransactionMessage,
   TransactionInstruction,
   VersionedTransaction,
+  SimulateTransactionConfig,
 } from "@solana/web3.js";
 
 // sneaking into non-exported NodeWalled to get Keypair
@@ -129,10 +130,16 @@ describe("solana-typescript-api", () => {
     }).compileToV0Message();
     const vTxn = new VersionedTransaction(messageV0);
     vTxn.sign([anchorWalletPayer]);
-    // --- simulate
+    // --- simulate - we need to define what addresses will be listed back to us on simulate changes
+    const config: SimulateTransactionConfig = {
+      accounts: {
+        encoding: "base64",
+        addresses: [anchorWalletPayer.publicKey.toString()]
+      }
+    };
     const simulatedResponse = await anchor
       .getProvider()
-      .connection.simulateTransaction(vTxn);
+      .connection.simulateTransaction(vTxn, config);
     console.log(
       "accounts",
       simulatedResponse.value.accounts,
@@ -141,31 +148,4 @@ describe("solana-typescript-api", () => {
     );
   });
 
-  // it("call system program transfer", async () => {
-  //   // Taking the current blockhash of the network.
-  //   // Value is used at method waiting for finalizing the transaction within the commitment level (i.e., confirmTransaction)
-  //   // The method checks only in such deep history as defined in parameter of lastValidBlockHeight
-  //   const blockhashBeforeCall: BlockhashWithExpiryBlockHeight =
-  //     await anchor.getProvider().connection.getLatestBlockhash(commitmentLevel)
-  //   // Anchor Typescript SDK to call our program. Anchor knows about 'intialize' method based on generated IDL (./target/idl/*.json)
-  //   const tx = await program.methods.initialize().rpc();
-  //   // Waiting for transaction to be confirmed by network into level of 'confirmed'
-  //   // commitment levels summarized e.g., at https://solana.stackexchange.com/a/2199/1386
-  //   const txConfirmation = await anchor.getProvider().connection.confirmTransaction(
-  //     {signature: tx, blockhash: blockhashBeforeCall.blockhash, lastValidBlockHeight: blockhashBeforeCall.lastValidBlockHeight},
-  //     commitmentLevel
-  //   )
-  //   assert.isNull(txConfirmation.value.err, `tx ${tx} failed with ${txConfirmation.value.err}`)
-  //   // Transaction is available in blockchain at the commitment level defined
-  //   // we can read it and print data that interested us - what accounts were used, what is log of execution
-  //   const txLog = await anchor.getProvider().connection.getTransaction(
-  //     tx,
-  //     {commitment: commitmentLevel, maxSupportedTransactionVersion: undefined}
-  //   );
-  //   console.log(
-  //     "tx", tx,
-  //     "tx accounts", txLog.transaction.message.getAccountKeys().staticAccountKeys.map((ak) =>  ak.toBase58()),
-  //     "tx log", txLog.meta.logMessages
-  //   )
-  // });
 });
