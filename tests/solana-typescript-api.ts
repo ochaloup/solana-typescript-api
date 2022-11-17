@@ -1,7 +1,7 @@
 import * as anchor from "@project-serum/anchor";
-import { AnchorProvider, Program } from "@project-serum/anchor";
+import { AnchorProvider, Provider, Program } from "@project-serum/anchor";
 import { SolanaTypescriptApi } from "../target/types/solana_typescript_api";
-import { assert, config } from "chai";
+import { assert } from "chai";
 
 import {
   BlockhashWithExpiryBlockHeight,
@@ -14,7 +14,18 @@ import {
   TransactionInstruction,
   VersionedTransaction,
   SimulateTransactionConfig,
+  ConfirmOptions,
 } from "@solana/web3.js";
+
+import { 
+  SolanaProvider,
+  TieredBroadcaster,
+  TransactionEnvelope,
+  parseTransactionLogs,
+  InstructionLogs,
+  TransactionReceipt,
+  PendingTransaction,
+} from '@saberhq/solana-contrib'
 
 // sneaking into non-exported NodeWalled to get Keypair
 import NodeWallet from "@project-serum/anchor/dist/cjs/nodewallet";
@@ -48,6 +59,26 @@ describe("solana-typescript-api", () => {
       .getProvider()
       .connection.getLatestBlockhash(commitmentLevel);
   });
+
+
+  // ------------------------------------------------------------------------------
+  // ----------------------- API SETUP --------------------------------------------
+  // ------------------------------------------------------------------------------
+
+  function getSolanaProvider(providerFromAnchor: Provider): SolanaProvider {
+    const anchorProvider: AnchorProvider = (providerFromAnchor as AnchorProvider)
+    const confirmOpts: ConfirmOptions = anchorProvider.opts;
+    const broadcaster = new TieredBroadcaster(anchorProvider.connection, [], confirmOpts)
+    // do we want the pre-flight or not? :-)
+    const solanaProvider = new SolanaProvider(
+      anchorProvider.connection,
+      broadcaster,
+      anchorProvider.wallet,
+      confirmOpts,
+    )
+    return solanaProvider
+  }
+
 
   // ------------------------------------------------------------------------------
   // ------------------------------ TESTS -----------------------------------------
@@ -93,12 +124,12 @@ describe("solana-typescript-api", () => {
     );
   });
 
-  it.only("simulate the program with anchor", async () => {
+  it("simulate the program with anchor", async () => {
     const simulateResponse = await program.methods.initialize().simulate();
     console.log("events", simulateResponse.events, "log", simulateResponse.raw);
   });
 
-  it.only("simulate the program with deprecated web3/js call", async () => {
+  it("simulate the program with deprecated web3/js call", async () => {
     const ix: TransactionInstruction = await program.methods
       .initialize()
       .instruction();
@@ -117,7 +148,7 @@ describe("solana-typescript-api", () => {
     );
   });
 
-  it.only("simulate the program with v0 web3/js call", async () => {
+  it("simulate the program with v0 web3/js call", async () => {
     const ix: TransactionInstruction = await program.methods
       .initialize()
       .instruction();
@@ -148,4 +179,19 @@ describe("solana-typescript-api", () => {
     );
   });
 
+
+  it.only("call the program with saber", async () => {
+    const ix: TransactionInstruction = await program.methods.initialize().instruction();
+
+    // saberhq TransactionEnvelope API
+    // see https://docs.saber.so/developing/sdks/saber-common + https://saber-hq.github.io/saber-common/modules/_saberhq_solana_contrib.html
+    const solanaProvider = getSolanaProvider(anchor.getProvider())
+    const txnEnvelope = new TransactionEnvelope(solanaProvider, [ix]);
+    const simulatedResponse: RpcResponseAndContext<SimulatedTransactionResponse> = await txnEnvelope.simulateTable()
+    const txLogs: InstructionLogs[] = parseTransactionLogs(simulatedResponse.value.logs, simulatedResponse.value.err)
+    for (var txLog of txLogs) {
+      console.log(txLog)
+    }
+  });
 });
+
