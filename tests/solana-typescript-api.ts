@@ -17,7 +17,7 @@ import {
   ConfirmOptions,
 } from "@solana/web3.js";
 
-import { 
+import {
   SolanaProvider,
   TieredBroadcaster,
   TransactionEnvelope,
@@ -26,7 +26,7 @@ import {
   TransactionReceipt,
   PendingTransaction,
   confirmTransactionLike,
-} from '@saberhq/solana-contrib'
+} from "@saberhq/solana-contrib";
 
 // sneaking into non-exported NodeWalled to get Keypair
 import NodeWallet from "@project-serum/anchor/dist/cjs/nodewallet";
@@ -61,25 +61,27 @@ describe("solana-typescript-api", () => {
       .connection.getLatestBlockhash(commitmentLevel);
   });
 
-
   // ------------------------------------------------------------------------------
   // ----------------------- API SETUP --------------------------------------------
   // ------------------------------------------------------------------------------
 
   function getSolanaProvider(providerFromAnchor: Provider): SolanaProvider {
-    const anchorProvider: AnchorProvider = (providerFromAnchor as AnchorProvider)
+    const anchorProvider: AnchorProvider = providerFromAnchor as AnchorProvider;
     const confirmOpts: ConfirmOptions = anchorProvider.opts;
-    const broadcaster = new TieredBroadcaster(anchorProvider.connection, [], confirmOpts)
+    const broadcaster = new TieredBroadcaster(
+      anchorProvider.connection,
+      [],
+      confirmOpts
+    );
     // do we want the pre-flight or not? :-)
     const solanaProvider = new SolanaProvider(
       anchorProvider.connection,
       broadcaster,
       anchorProvider.wallet,
-      confirmOpts,
-    )
-    return solanaProvider
+      confirmOpts
+    );
+    return solanaProvider;
   }
-
 
   // ------------------------------------------------------------------------------
   // ------------------------------ TESTS -----------------------------------------
@@ -88,7 +90,9 @@ describe("solana-typescript-api", () => {
   // NOTE: to execute only one test change it("... to it.only("...
   it("simple call the program", async () => {
     // Anchor Typescript SDK to call our program. Anchor knows about 'intialize' method based on generated IDL (./target/idl/*.json)
-    const tx = await program.methods.initialize().rpc({commitment: commitmentLevel});
+    const tx = await program.methods
+      .initialize()
+      .rpc({ commitment: commitmentLevel });
 
     // Waiting for transaction to be confirmed by network into level of 'confirmed'
     // commitment levels summarized e.g., at https://solana.stackexchange.com/a/2199/1386
@@ -166,8 +170,8 @@ describe("solana-typescript-api", () => {
     const config: SimulateTransactionConfig = {
       accounts: {
         encoding: "base64",
-        addresses: [anchorWalletPayer.publicKey.toString()]
-      }
+        addresses: [anchorWalletPayer.publicKey.toString()],
+      },
     };
     const simulatedResponse = await anchor
       .getProvider()
@@ -180,38 +184,51 @@ describe("solana-typescript-api", () => {
     );
   });
 
-
   it("simulate program with saberhq library", async () => {
-    const ix: TransactionInstruction = await program.methods.initialize().instruction();
+    const ix: TransactionInstruction = await program.methods
+      .initialize()
+      .instruction();
 
     // saberhq TransactionEnvelope API
     // see https://docs.saber.so/developing/sdks/saber-common + https://saber-hq.github.io/saber-common/modules/_saberhq_solana_contrib.html
-    const solanaProvider = getSolanaProvider(anchor.getProvider())
+    const solanaProvider = getSolanaProvider(anchor.getProvider());
     const txnEnvelope = new TransactionEnvelope(solanaProvider, [ix]);
-    const simulatedResponse: RpcResponseAndContext<SimulatedTransactionResponse> = await txnEnvelope.simulateTable()
-    const txLogs: InstructionLogs[] = parseTransactionLogs(simulatedResponse.value.logs, simulatedResponse.value.err)
-    txLogs.forEach(txl => console.log(txl))
+    const simulatedResponse: RpcResponseAndContext<SimulatedTransactionResponse> =
+      await txnEnvelope.simulateTable();
+    const txLogs: InstructionLogs[] = parseTransactionLogs(
+      simulatedResponse.value.logs,
+      simulatedResponse.value.err
+    );
+    txLogs.forEach((txl) => console.log(txl));
   });
 
   it("call program with saberhq library", async () => {
-    const ix: TransactionInstruction = await program.methods.initialize().instruction();
-    const solanaProvider = getSolanaProvider(anchor.getProvider())
+    const ix: TransactionInstruction = await program.methods
+      .initialize()
+      .instruction();
+    const solanaProvider = getSolanaProvider(anchor.getProvider());
 
     // saberhq TransactionEnvelope API
-    const envelopeTx: TransactionEnvelope = new TransactionEnvelope(solanaProvider, [ix])
-    const pendingTx: PendingTransaction = await envelopeTx.send()
-    const receiptTx: TransactionReceipt = await pendingTx.wait()
-    receiptTx.printLogs()
-    console.log("-----------")
-    
+    const envelopeTx: TransactionEnvelope = new TransactionEnvelope(
+      solanaProvider,
+      [ix]
+    );
+    const pendingTx: PendingTransaction = await envelopeTx.send();
+    const receiptTx: TransactionReceipt = await pendingTx.wait();
+    receiptTx.printLogs();
+    console.log("-----------");
+
     // or fluent API
-    await (await (await new TransactionEnvelope(solanaProvider, [ix]).send()).wait()).printLogs()
-    console.log("-----------")
-    
+    await (
+      await (await new TransactionEnvelope(solanaProvider, [ix]).send()).wait()
+    ).printLogs();
+    console.log("-----------");
+
     // or confirmTransactionLike
-    const receiptTx2 = await confirmTransactionLike(new TransactionEnvelope(solanaProvider, [ix]))
-    receiptTx.printLogs()
-    console.log("-----------")
+    const receiptTx2 = await confirmTransactionLike(
+      new TransactionEnvelope(solanaProvider, [ix])
+    );
+    receiptTx.printLogs();
+    console.log("-----------");
   });
 });
-
