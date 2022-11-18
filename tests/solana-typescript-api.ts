@@ -25,6 +25,7 @@ import {
   InstructionLogs,
   TransactionReceipt,
   PendingTransaction,
+  confirmTransactionLike,
 } from '@saberhq/solana-contrib'
 
 // sneaking into non-exported NodeWalled to get Keypair
@@ -180,7 +181,7 @@ describe("solana-typescript-api", () => {
   });
 
 
-  it.only("call the program with saber", async () => {
+  it("simulate program with saberhq library", async () => {
     const ix: TransactionInstruction = await program.methods.initialize().instruction();
 
     // saberhq TransactionEnvelope API
@@ -189,9 +190,28 @@ describe("solana-typescript-api", () => {
     const txnEnvelope = new TransactionEnvelope(solanaProvider, [ix]);
     const simulatedResponse: RpcResponseAndContext<SimulatedTransactionResponse> = await txnEnvelope.simulateTable()
     const txLogs: InstructionLogs[] = parseTransactionLogs(simulatedResponse.value.logs, simulatedResponse.value.err)
-    for (var txLog of txLogs) {
-      console.log(txLog)
-    }
+    txLogs.forEach(txl => console.log(txl))
+  });
+
+  it("call program with saberhq library", async () => {
+    const ix: TransactionInstruction = await program.methods.initialize().instruction();
+    const solanaProvider = getSolanaProvider(anchor.getProvider())
+
+    // saberhq TransactionEnvelope API
+    const envelopeTx: TransactionEnvelope = new TransactionEnvelope(solanaProvider, [ix])
+    const pendingTx: PendingTransaction = await envelopeTx.send()
+    const receiptTx: TransactionReceipt = await pendingTx.wait()
+    receiptTx.printLogs()
+    console.log("-----------")
+    
+    // or fluent API
+    await (await (await new TransactionEnvelope(solanaProvider, [ix]).send()).wait()).printLogs()
+    console.log("-----------")
+    
+    // or confirmTransactionLike
+    const receiptTx2 = await confirmTransactionLike(new TransactionEnvelope(solanaProvider, [ix]))
+    receiptTx.printLogs()
+    console.log("-----------")
   });
 });
 
