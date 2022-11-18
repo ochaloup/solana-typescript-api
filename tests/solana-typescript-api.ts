@@ -88,7 +88,7 @@ describe("solana-typescript-api", () => {
   // NOTE: to execute only one test change it("... to it.only("...
   it("simple call the program", async () => {
     // Anchor Typescript SDK to call our program. Anchor knows about 'intialize' method based on generated IDL (./target/idl/*.json)
-    const tx = await program.methods.initialize().rpc();
+    const tx = await program.methods.initialize().rpc({commitment: commitmentLevel});
 
     // Waiting for transaction to be confirmed by network into level of 'confirmed'
     // commitment levels summarized e.g., at https://solana.stackexchange.com/a/2199/1386
