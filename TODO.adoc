@@ -1,0 +1,20 @@
+= What can be checked more
+
+== 1)
+
+https://stackoverflow.com/questions/71721805/debugging-transaction-simulation-failed-when-sending-program-instruction-sola
+
+[source,typescript]
+----
+const signed = await provider.request({
+  method: 'signTransaction',
+  params: {
+    message: bs58.encode(transaction.serializeMessage()),
+  },
+});
+
+const signature = bs58.decode(signed.signature);
+transaction.addSignature(provider.publicKey, signature);
+
+await connection.sendRawTransaction(transaction.serialize())
+----
